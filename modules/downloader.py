@@ -33,16 +33,12 @@ def get_cookie_file_path() -> Optional[str]:
     return None
 
 
+
+
 def get_base_ydl_opts() -> Dict[str, Any]:
-    """Returns baseline yt-dlp options configured to resist bot checks."""
-    opts: Dict[str, Any] = {
+    opts = {
         'quiet': True,
         'no_warnings': True,
-    
-            'youtube': {
-                'player_client': ['tv', 'android', 'web', 'mweb', 'ios']
-            }
-        },
         'http_headers': {
             'User-Agent': (
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
@@ -52,11 +48,14 @@ def get_base_ydl_opts() -> Dict[str, Any]:
             'Accept-Language': 'en-US,en;q=0.9',
         }
     }
+
     cookie_path = get_cookie_file_path()
+
     if cookie_path:
         opts['cookiefile'] = cookie_path
 
     return opts
+
 
 
 def extract_video_info(url: str) -> Dict[str, Any]:
