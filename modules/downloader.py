@@ -40,7 +40,7 @@ def get_base_ydl_opts() -> Dict[str, Any]:
         'no_warnings': True,
         'extractor_args': {
             'youtube': {
-                'player_client': ['android', 'ios', 'mweb', 'web']
+                'player_client': ['tv', 'android', 'web', 'mweb', 'ios']
             }
         },
         'http_headers': {
@@ -80,13 +80,13 @@ def extract_video_info(url: str) -> Dict[str, Any]:
             }
     except Exception as e:
         err_msg = str(e)
-        if any(term in err_msg for term in ["bot", "Sign in", "429", "login", "automated"]):
+        if any(term in err_msg for term in ["bot", "Sign in", "429", "login", "automated", "player response", "Failed to extract"]):
             raise RuntimeError(
                 "YouTube has blocked automated requests from this cloud server IP (anti-bot protection). "
                 "Cloud datacenter IPs (such as Render/AWS) are restricted by YouTube without cookies. "
                 "Recommended fixes: "
-                "1) Switch to the '📁 Upload Video File' tab to process any video directly, "
-                "2) Run locally via 'run_public.bat' (bypasses all cloud IP blocks), or "
+                "1) Run locally on your PC via 'START.bat' (your home IP is never blocked by YouTube!), "
+                "2) Switch to the '📁 Upload Video File' tab to process any video directly, or "
                 "3) Upload a YouTube cookies.txt in the sidebar settings."
             ) from e
         raise
@@ -146,10 +146,10 @@ def download_youtube_video(
                     video_filename = f"{base}.mp4"
     except Exception as e:
         err_msg = str(e)
-        if any(term in err_msg for term in ["bot", "Sign in", "429"]):
+        if any(term in err_msg for term in ["bot", "Sign in", "429", "login", "automated", "player response", "Failed to extract"]):
             raise RuntimeError(
                 "YouTube prevented the video stream download from this cloud IP. "
-                "Please upload the video file directly or run locally with run_public.bat."
+                "Please run locally on your PC via 'START.bat' (never blocked by YouTube) or use '📁 Upload Video File'."
             ) from e
         raise
 
