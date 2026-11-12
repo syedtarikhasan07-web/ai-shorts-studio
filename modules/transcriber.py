@@ -3,6 +3,7 @@ import requests
 from typing import List, Dict, Any, Optional, Callable
 import yt_dlp
 from faster_whisper import WhisperModel
+from modules.downloader import get_base_ydl_opts
 
 def get_youtube_captions_fast(
     url: str,
@@ -13,14 +14,14 @@ def get_youtube_captions_fast(
     Extracts official or auto-generated YouTube captions with word/phrase timestamps in ~1-2 seconds!
     Bypasses heavy local CPU transcription completely.
     """
+    if not url:
+        return None
+
     if progress_callback:
         progress_callback(0.62, "Checking for instant YouTube captions (1-2s)...")
 
-    ydl_opts = {
-        'skip_download': True,
-        'quiet': True,
-        'no_warnings': True
-    }
+    ydl_opts = get_base_ydl_opts()
+    ydl_opts['skip_download'] = True
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
