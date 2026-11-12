@@ -2,12 +2,31 @@ import os
 import subprocess
 from pathlib import Path
 
+# Silence huggingface symlink warnings on Windows
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+
 # Paths
 BASE_DIR = Path(__file__).resolve().parent
 BIN_DIR = BASE_DIR / "bin"
 DOWNLOADS_DIR = BASE_DIR / "downloads"
 OUTPUT_DIR = BASE_DIR / "output"
 TEMP_DIR = BASE_DIR / "temp"
+
+# Load .env file automatically if present
+env_file = BASE_DIR / ".env"
+if env_file.exists():
+    try:
+        with open(env_file, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    k_str = k.strip()
+                    v_str = v.strip().strip('"').strip("'")
+                    if k_str and k_str not in os.environ:
+                        os.environ[k_str] = v_str
+    except Exception:
+        pass
 
 for d in [BIN_DIR, DOWNLOADS_DIR, OUTPUT_DIR, TEMP_DIR]:
     d.mkdir(parents=True, exist_ok=True)
