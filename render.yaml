@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: ai-shorts-studio
+    env: docker
+    dockerfilePath: Dockerfile
+    buildCommand: ""
+    startCommand: ""
+    healthCheckPath: /
+    healthCheckTimeout: 60
+    region: oregon
+    plan: free
