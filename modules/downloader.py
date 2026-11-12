@@ -38,7 +38,7 @@ def get_base_ydl_opts() -> Dict[str, Any]:
     opts: Dict[str, Any] = {
         'quiet': True,
         'no_warnings': True,
-        'extractor_args': {
+    
             'youtube': {
                 'player_client': ['tv', 'android', 'web', 'mweb', 'ios']
             }
