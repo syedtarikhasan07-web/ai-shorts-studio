@@ -16,5 +16,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 EXPOSE 10000
 
-CMD ["sh", "-c", "streamlit run app.py --server.address 0.0.0.0 --server.enableCORS false --server.port ${PORT:-10000}"]
-
+CMD ["sh", "-c", "streamlit run app.py --server.address 0.0.0.0 --server.enableCORS false --server.headless true --browser.gatherUsageStats false --server.port ${PORT:-10000}"]
