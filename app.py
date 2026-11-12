@@ -4,7 +4,7 @@ from pathlib import Path
 import streamlit as st
 import config
 importlib.reload(config)
-from modules.downloader import extract_video_info, download_youtube_video
+from modules.downloader import extract_video_info, download_youtube_video, process_uploaded_video
 from modules.transcriber import transcribe_smart
 from modules.highlight_detector import detect_viral_moments_gemini
 from modules.face_tracker import compute_smart_crop_filter
@@ -144,12 +144,35 @@ gemini_key = st.sidebar.text_input(
     help="Optional. If provided, uses Gemini Flash for AI highlight detection. If left empty, built-in smart linguistic detector will be used."
 )
 
-# Main Application Logic
-url_input = st.text_input("🔗 Paste YouTube Video URL:", placeholder="https://www.youtube.com/watch?v=...")
+with st.sidebar.expander("🍪 YouTube Cookies (For Cloud Hosting)", expanded=False):
+    st.caption("If hosting on Render/AWS, YouTube blocks anonymous requests. Upload your exported `cookies.txt` here to authenticate.")
+    uploaded_cookie = st.file_uploader("Upload cookies.txt", type=["txt"], key="cookie_file_uploader")
+    if uploaded_cookie:
+        from config import TEMP_DIR
+        cookie_path = TEMP_DIR / "youtube_cookies.txt"
+        with open(cookie_path, "wb") as f:
+            f.write(uploaded_cookie.getbuffer())
+        st.success("✅ Cookies saved! Cloud requests will use this session.")
 
-col1, col2 = st.columns([1, 4])
-with col1:
-    fetch_btn = st.button("🔍 Analyze Video", use_container_width=True)
+# Main Application Logic
+tab_yt, tab_upload = st.tabs(["🔗 YouTube URL", "📁 Upload Video File"])
+
+with tab_yt:
+    url_input = st.text_input("Paste YouTube Video URL:", placeholder="https://www.youtube.com/watch?v=...", key="yt_url_field")
+    col1, col2 = st.columns([1, 4])
+    with col1:
+        fetch_btn = st.button("🔍 Analyze Video", use_container_width=True)
+
+with tab_upload:
+    st.caption("⚡ Direct video upload completely bypasses YouTube cloud IP limits! Upload any MP4, MOV, MKV, or WEBM:")
+    uploaded_video_file = st.file_uploader(
+        "Choose video file:",
+        type=["mp4", "mov", "mkv", "webm"],
+        key="local_video_uploader"
+    )
+    col_u1, col_u2 = st.columns([1, 4])
+    with col_u1:
+        upload_btn = st.button("📁 Process Uploaded Video", use_container_width=True)
 
 # Session state initialization
 if "video_info" not in st.session_state:
@@ -160,16 +183,41 @@ if "detected_clips" not in st.session_state:
     st.session_state.detected_clips = None
 if "video_path" not in st.session_state:
     st.session_state.video_path = None
+if "audio_path" not in st.session_state:
+    st.session_state.audio_path = None
+if "is_uploaded" not in st.session_state:
+    st.session_state.is_uploaded = False
+if "current_url" not in st.session_state:
+    st.session_state.current_url = ""
 
 if fetch_btn and url_input:
     try:
         with st.spinner("Fetching YouTube metadata..."):
             info = extract_video_info(url_input)
             st.session_state.video_info = info
+            st.session_state.current_url = url_input
+            st.session_state.is_uploaded = False
+            st.session_state.video_path = None
+            st.session_state.audio_path = None
             st.session_state.detected_clips = None
             st.session_state.transcription_data = None
     except Exception as e:
         st.error(f"Error reading YouTube URL: {e}")
+
+if upload_btn and uploaded_video_file:
+    try:
+        with st.spinner("Saving and analyzing uploaded video..."):
+            v_path, a_path, info = process_uploaded_video(uploaded_video_file)
+            st.session_state.video_info = info
+            st.session_state.current_url = ""
+            st.session_state.video_path = v_path
+            st.session_state.audio_path = a_path
+            st.session_state.is_uploaded = True
+            st.session_state.detected_clips = None
+            st.session_state.transcription_data = None
+            st.success(f"Video '{info['title']}' loaded successfully!")
+    except Exception as e:
+        st.error(f"Error processing uploaded video: {e}")
 
 # Display Video Card if metadata loaded
 if st.session_state.video_info:
@@ -182,11 +230,14 @@ if st.session_state.video_info:
     with c1:
         if info.get('thumbnail'):
             st.image(info['thumbnail'], use_container_width=True)
+        else:
+            st.info("📹 Local Video File Loaded")
     with c2:
         st.subheader(info['title'])
-        st.write(f"👤 **Channel:** {info['uploader']}")
+        st.write(f"👤 **Source:** {info['uploader']}")
         st.write(f"⏱️ **Duration:** {duration_min}m {duration_sec}s")
-        st.write(f"👀 **Views:** {info.get('view_count', 0):,}")
+        if info.get('view_count'):
+            st.write(f"👀 **Views:** {info.get('view_count', 0):,}")
 
     st.markdown("---")
 
@@ -201,17 +252,23 @@ if st.session_state.video_info:
                 status_text.info(text)
 
             try:
-                # 1. Download
-                video_file, audio_file, _ = download_youtube_video(
-                    url=url_input,
-                    target_res=resolution_label,
-                    progress_callback=update_progress
-                )
-                st.session_state.video_path = video_file
+                if st.session_state.is_uploaded:
+                    video_file = st.session_state.video_path
+                    audio_file = st.session_state.audio_path
+                    update_progress(0.60, "Audio ready for AI transcription...")
+                else:
+                    # 1. Download
+                    video_file, audio_file, _ = download_youtube_video(
+                        url=st.session_state.current_url,
+                        target_res=resolution_label,
+                        progress_callback=update_progress
+                    )
+                    st.session_state.video_path = video_file
+                    st.session_state.audio_path = audio_file
 
                 # 2. Transcribe (Instant or Turbo)
                 transcription = transcribe_smart(
-                    url=url_input,
+                    url=st.session_state.current_url,
                     audio_path=audio_file,
                     engine_choice=transcription_engine,
                     model_size="tiny" if "Tiny" in transcription_engine or "Auto" in transcription_engine else "base",
