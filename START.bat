@@ -81,6 +81,11 @@ if exist "bin\ffmpeg.exe" (
     )
 )
 
+:: 4. Clear any old stale processes on port 8501
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":8501" ^| findstr "LISTENING"') do (
+    taskkill /f /pid %%a >nul 2>nul
+)
+
 echo.
 echo =====================================================================
 echo           🚀 LAUNCHING AI SHORTS STUDIO IN YOUR BROWSER...
@@ -90,6 +95,9 @@ echo Application will open at: http://localhost:8501
 echo Leave this terminal window OPEN while using the studio.
 echo Press Ctrl+C in this window anytime to stop the studio.
 echo.
+
+:: Automatically open browser
+start http://localhost:8501
 
 :: Launch Streamlit app
 "!PYTHON_EXE!" -m streamlit run app.py
